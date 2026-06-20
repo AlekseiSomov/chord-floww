@@ -1330,6 +1330,79 @@ window.addEventListener('load', function(){
   setTimeout(showApp, 2000);
 });
 </script>
+<!-- === ПОИСК В ИНТЕРНЕТЕ === -->
+<div class="modal" id="searchModal">
+  <div class="modal-content">
+    <h2>🔍 Поиск песен с аккордами</h2>
+    <div class="search-box" style="margin-bottom:10px">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--text-dim);stroke-width:2;fill:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="internetSearchInput" placeholder="Например: Beatles Yesterday" onkeyup="if(event.key==='Enter')searchInternet()">
+    </div>
+    <button onclick="searchInternet()" class="primary" style="width:100%;margin-bottom:10px">Найти аккорды</button>
+    <div id="searchResults" style="max-height:350px;overflow-y:auto;margin-top:10px"></div>
+    <div class="modal-actions" style="margin-top:14px"><button onclick="document.getElementById('searchModal').classList.remove('active')">Закрыть</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var btns=document.querySelectorAll('button');
+  for(var i=0;i<btns.length;i++){
+    var span=btns[i].querySelector('span[data-i18n="findOnline"]');
+    if(span){
+      btns[i].onclick=function(){
+        document.getElementById('searchModal').classList.add('active');
+        var inp=document.getElementById('internetSearchInput');
+        if(inp)setTimeout(function(){inp.focus();},100);
+      };
+      break;
+    }
+  }
+
+  window.searchInternet=async function(){
+    var query=document.getElementById('internetSearchInput').value.trim();
+    if(!query){alert('Введите название песни');return;}
+    var rd=document.getElementById('searchResults');
+    rd.innerHTML='<div style="text-align:center;padding:16px;color:#af52de;font-weight:600">Поиск...</div>';
+    try{
+      var url='https://amdm.ru/search/?q='+encodeURIComponent(query);
+      var resp=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+      var html=await resp.text();
+      var parser=new DOMParser();
+      var doc=parser.parseFromString(html,'text/html');
+      var links=doc.querySelectorAll('a[href*="/accords/"]');
+      if(links.length>0){
+        var fl='https://amdm.ru'+links[0].getAttribute('href');
+        var cr=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(fl));
+        var ch=await cr.text();
+        var cd=parser.parseFromString(ch,'text/html');
+        var content=cd.querySelector('.song_text');
+        if(content&&content.textContent.trim().length>10){
+          var st=query.split('-')[0].trim();
+          var ar=query.split('-')[1]?query.split('-')[1].trim():'';
+          var sd={title:st+(ar?' - '+ar:''),text:content.textContent};
+          var ri=document.createElement('div');
+          ri.className='search-result-item';
+          ri.style.cssText='padding:10px;background:var(--card);border:1px solid var(--card-border);border-radius:8px;margin-bottom:6px;cursor:pointer';
+          ri.innerHTML='<h4 style="font-size:14px;color:var(--text);margin-bottom:3px">'+st+(ar?' - '+ar:'')+' <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:#af52de;color:#fff;border-radius:5px;font-size:10px;font-weight:700;margin-left:6px">🎸 AmDM</span></h4><p style="font-size:11px;color:var(--text-dim)">✓ Найдено</p>';
+          ri.onclick=function(){
+            document.getElementById('songTitleInput').value=sd.title;
+            document.getElementById('songTextInput').value=sd.text;
+            document.getElementById('searchModal').classList.remove('active');
+            document.getElementById('songModal').classList.add('active');
+          };
+          rd.innerHTML='';
+          rd.appendChild(ri);
+          return;
+        }
+      }
+      rd.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Не найдено.<br><br><a href="https://amdm.ru/search/?q='+encodeURIComponent(query)+'" target="_blank" style="color:var(--chord-highlight);text-decoration:underline">Открыть сайт вручную</a></div>';
+    }catch(err){
+      rd.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Ошибка сети.<br><br><a href="https://amdm.ru/search/?q='+encodeURIComponent(query)+'" target="_blank" style="color:var(--chord-highlight);text-decoration:underline">Открыть сайт вручную</a></div>';
+    }
+  };
+})();
+</script>
 </body>
 </html>
 
